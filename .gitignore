@@ -1,0 +1,4 @@
+# Ignorando coisas desnecessárias do Python
+__pycache__/
+*.py[cod]
+*$py.class
