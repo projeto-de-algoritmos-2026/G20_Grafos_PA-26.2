@@ -39,6 +39,7 @@ from src.game.constants import (
     KEY_MOVE_UP, KEY_MOVE_DOWN, KEY_MOVE_LEFT, KEY_MOVE_RIGHT, KEY_WAIT,
     KEY_CAM_UP, KEY_CAM_DOWN, KEY_CAM_LEFT, KEY_CAM_RIGHT, KEY_CAM_RESET,
     KEY_DEBUG, KEY_REGEN,
+    REGEN_HOLD_MS,
 )
 
 Coord = tuple[int, int]
@@ -97,6 +98,7 @@ class Game:
         self._player:   Player      | None = None
         self._monsters: list[Monster]      = []
         self._msg_log:  list[str]          = []
+        self._regen_started_at: int | None = None
 
         self._new_dungeon()
 
@@ -186,8 +188,9 @@ class Game:
                     self._log(f"Debug A* {'ATIVADO' if self._debug_mode else 'desativado'}")
                     return False
 
-                if event.key == KEY_REGEN:
-                    self._new_dungeon()
+                if event.key == KEY_REGEN and self._regen_started_at is None:
+                    self._regen_started_at = pygame.time.get_ticks()
+                    self._log("Segure R por 1 segundo para reiniciar a run.")
                     return False
 
                 if self._state in (STATE_GAME_OVER, STATE_VICTORY):
@@ -228,6 +231,16 @@ class Game:
                         self._player.end_turn()
                         return True
 
+            if event.type == pygame.KEYUP and event.key == KEY_REGEN:
+                if self._regen_started_at is not None:
+                    held_ms = pygame.time.get_ticks() - self._regen_started_at
+                    self._regen_started_at = None
+                    if held_ms >= REGEN_HOLD_MS:
+                        self._new_dungeon()
+                    else:
+                        self._log("R soltado cedo demais. Segure por 1 segundo.")
+                return False
+
         return False
 
     # ── Armadilhas ────────────────────────────────────────────────────────────
@@ -262,19 +275,31 @@ class Game:
         
         pos = self._player.pos
         if pos in self._dungeon.weapons:
-            weapon = self._dungeon.weapons.pop(pos)
-            self._player.weapon = weapon
-            self._player.add_score(weapon.score_bonus)
-            self._log(f"Voce pegou: {weapon.name} ({weapon.min_damage}-{weapon.max_damage} dmg)!")
+            weapon = self._dungeon.weapons[pos]
+            current_weapon = self._player.weapon
+            if (weapon.max_damage, weapon.min_damage) > (current_weapon.max_damage, current_weapon.min_damage):
+                self._dungeon.weapons.pop(pos)
+                self._player.weapon = weapon
+                self._player.add_score(weapon.score_bonus)
+                self._log(f"Voce pegou: {weapon.name} ({weapon.min_damage}-{weapon.max_damage} dmg)!")
+            else:
+                self._log(f"{weapon.name} e inferior a arma atual. Item ignorado.")
             
         if pos in self._dungeon.items:
-            item = self._dungeon.items.pop(pos)
-            self._player.add_score(item.score_bonus)
+            item = self._dungeon.items[pos]
             if item.is_armor:
-                self._player.armor = item
-                self._player.increase_max_hp(item.hp_bonus)
-                self._log(f"Armadura! Max HP +{item.hp_bonus}. HP: {self._player.hp}/{self._player.max_hp}")
+                current_bonus = self._player.armor.hp_bonus if self._player.armor else 0
+                if item.hp_bonus > current_bonus:
+                    self._dungeon.items.pop(pos)
+                    self._player.armor = item
+                    self._player.add_score(item.score_bonus)
+                    self._player.increase_max_hp(item.hp_bonus)
+                    self._log(f"Armadura! Max HP +{item.hp_bonus}. HP: {self._player.hp}/{self._player.max_hp}")
+                else:
+                    self._log(f"{item.name} e inferior a armadura atual. Item ignorado.")
             else:
+                self._dungeon.items.pop(pos)
+                self._player.add_score(item.score_bonus)
                 healed = self._player.heal(item.heal_amount)
                 self._log(f"Pocao! Curou {healed} HP. HP: {self._player.hp}/{self._player.max_hp}")
 
@@ -282,9 +307,13 @@ class Game:
         """Verifica se o jogador alcançou a saída."""
         if not self._player or not self._dungeon:
             return
-        if self._player.pos == self._dungeon.exit_pos:
+        all_defeated = bool(self._monsters) and all(not monster.is_alive for monster in self._monsters)
+        if self._player.pos == self._dungeon.exit_pos and all_defeated:
             self._state = STATE_VICTORY
-            self._log("VITORIA! Voce escapou da masmorra! Pressione R para jogar novamente.")
+            self._log("VITORIA TOTAL! Voce derrotou todos os inimigos e escapou da masmorra!")
+        elif self._player.pos == self._dungeon.exit_pos:
+            remaining = sum(monster.is_alive for monster in self._monsters)
+            self._log(f"A saida esta selada. Derrote os {remaining} inimigos restantes!")
 
     # ── Combate ───────────────────────────────────────────────────────────────
 
@@ -361,8 +390,6 @@ class Game:
                     monster.move_to(*new_pos)
                     all_positions.add(new_pos)
 
-        self._monsters = [m for m in self._monsters if m.is_alive]
-
     # ── Renderização ──────────────────────────────────────────────────────────
 
     def _render(self) -> None:
@@ -371,7 +398,7 @@ class Game:
         self._renderer.render_all(
             tilemap=self._dungeon.tilemap,
             player=self._player,
-            monsters=[m for m in self._monsters if m.is_alive],
+            monsters=self._monsters,
             weapons=self._dungeon.weapons,
             items=self._dungeon.items,
             debug_mode=self._debug_mode,

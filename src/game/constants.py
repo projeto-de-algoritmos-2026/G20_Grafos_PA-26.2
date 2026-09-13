@@ -88,4 +88,5 @@ KEY_CAM_RESET  = pygame.K_c       # 'C' centraliza a câmera no jogador
 
 # ─── Teclas — Ações ───────────────────────────────────────────────────────────
 KEY_DEBUG      = pygame.K_TAB     # TAB para toggle do overlay de debug
-KEY_REGEN      = pygame.K_r       # 'R' para regenerar dungeon
+KEY_REGEN      = pygame.K_r       # 'R' pressionado para regenerar dungeon
+REGEN_HOLD_MS  = 1000             # tempo mínimo segurando R

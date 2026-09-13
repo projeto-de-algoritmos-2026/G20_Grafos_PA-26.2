@@ -137,7 +137,7 @@ class Renderer:
             self._draw_debug_paths(monsters, player, cam_col, cam_row)
 
         self._draw_entities(player, monsters, cam_col, cam_row)
-        self._draw_hud(player, debug_mode, message_log)
+        self._draw_hud(player, monsters, debug_mode, message_log)
 
         if is_game_over:
             self._draw_game_over()
@@ -309,12 +309,13 @@ class Renderer:
     def _draw_hud(
         self,
         player: "Player",
+        monsters: list["Monster"],
         debug_mode: bool,
         message_log: list[str],
     ) -> None:
         """HUD superior com barra de HP destacada e controles."""
         self._draw_player_hp_bar(player)
-        self._draw_info_line(player, debug_mode)
+        self._draw_info_line(player, monsters, debug_mode)
         self._draw_controls_hint()
         self._draw_message_log(message_log)
 
@@ -337,11 +338,11 @@ class Renderer:
         self._overlay.fill((0, 0, 0, 180))
         self.screen.blit(self._overlay, (0, 0))
 
-        lbl = self._font_huge.render("VITORIA!", True, C_EXIT)
+        lbl = self._font_huge.render("VITORIA TOTAL!", True, C_EXIT)
         rect = lbl.get_rect(center=(self.screen_w // 2, self.screen_h // 2 - 40))
         self.screen.blit(lbl, rect)
 
-        lbl2 = self._font_md.render("Você escapou da masmorra! Pressione R para uma nova run", True, C_TEXT)
+        lbl2 = self._font_md.render("Todos os inimigos derrotados! Segure R por 1 segundo para nova run", True, C_TEXT)
         rect2 = lbl2.get_rect(center=(self.screen_w // 2, self.screen_h // 2 + 20))
         self.screen.blit(lbl2, rect2)
 
@@ -382,15 +383,17 @@ class Renderer:
         )
         self.screen.blit(hp_txt, (bar_x + 6, bar_y + 1))
 
-    def _draw_info_line(self, player: "Player", debug_mode: bool) -> None:
-        """Linha com turno, pontos, modo debug, arma e armadura."""
+    def _draw_info_line(self, player: "Player", monsters: list["Monster"], debug_mode: bool) -> None:
+        """Linha com turno, pontuação, progresso e equipamentos."""
         debug_str = "  [TAB] DEBUG ON " if debug_mode else ""
+        defeated = sum(not monster.is_alive for monster in monsters)
         armor_str = (
             f"{player.armor.name} (+{player.armor.hp_bonus} HP)"
             if player.armor is not None else "Nenhuma"
         )
         line = (
             f"Jogadas: {player.turns}   Pontos: {player.score}   "
+            f"Inimigos: {defeated}/{len(monsters)}   "
             f"Arma: {player.weapon.name} ({player.weapon.min_damage}-{player.weapon.max_damage})"
             f"   Armadura: {armor_str}"
             f"{debug_str}"
@@ -402,7 +405,7 @@ class Renderer:
     def _draw_controls_hint(self) -> None:
         """Dica de controles no canto inferior direito."""
         hints = [
-            "WASD: Mover   .: Esperar   R: Regenerar",
+            "WASD: Mover   .: Esperar   Segure R: Nova run",
             "Setas: Camara  C: Centralizar  TAB: Debug A*",
         ]
         y = self.screen_h - 12 - len(hints) * 15
