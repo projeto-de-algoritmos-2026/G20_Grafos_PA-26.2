@@ -121,6 +121,7 @@ class Renderer:
         message_log: list[str],
         is_game_over: bool,
         is_victory: bool,
+        is_total_victory: bool,
     ) -> None:
         """
         Renderiza um frame completo usando o sistema de câmera.
@@ -142,7 +143,7 @@ class Renderer:
         if is_game_over:
             self._draw_game_over()
         elif is_victory:
-            self._draw_victory()
+            self._draw_victory(is_total_victory)
 
         pygame.display.flip()
 
@@ -332,17 +333,23 @@ class Renderer:
         rect2 = lbl2.get_rect(center=(self.screen_w // 2, self.screen_h // 2 + 20))
         self.screen.blit(lbl2, rect2)
 
-    def _draw_victory(self) -> None:
+    def _draw_victory(self, is_total_victory: bool) -> None:
         """Desenha a tela de Vitória semi-transparente no centro."""
         from src.game.constants import C_EXIT
         self._overlay.fill((0, 0, 0, 180))
         self.screen.blit(self._overlay, (0, 0))
 
-        lbl = self._font_huge.render("VITORIA TOTAL!", True, C_EXIT)
+        title = "VITORIA TOTAL!" if is_total_victory else "VITORIA!"
+        lbl = self._font_huge.render(title, True, C_EXIT)
         rect = lbl.get_rect(center=(self.screen_w // 2, self.screen_h // 2 - 40))
         self.screen.blit(lbl, rect)
 
-        lbl2 = self._font_md.render("Todos os inimigos derrotados! Segure R por 1 segundo para nova run", True, C_TEXT)
+        subtitle = (
+            "Todos os inimigos derrotados! Segure R por 1 segundo para nova run"
+            if is_total_victory
+            else "Voce escapou! Segure R por 1 segundo para nova run"
+        )
+        lbl2 = self._font_md.render(subtitle, True, C_TEXT)
         rect2 = lbl2.get_rect(center=(self.screen_w // 2, self.screen_h // 2 + 20))
         self.screen.blit(lbl2, rect2)
 

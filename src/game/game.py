@@ -91,6 +91,7 @@ class Game:
         self._debug_mode = False
         self._running    = True
         self._state      = STATE_PLAYING
+        self._total_victory = False
         self._rng        = random.Random(seed)
 
         # Estado do mundo (inicializado em _new_dungeon)
@@ -140,6 +141,7 @@ class Game:
             self._monsters.append(m)
 
         self._state = STATE_PLAYING
+        self._total_victory = False
 
         self._log(
             f"Dungeon: {len(rooms)} salas | "
@@ -307,13 +309,15 @@ class Game:
         """Verifica se o jogador alcançou a saída."""
         if not self._player or not self._dungeon:
             return
-        all_defeated = bool(self._monsters) and all(not monster.is_alive for monster in self._monsters)
-        if self._player.pos == self._dungeon.exit_pos and all_defeated:
+        if self._player.pos == self._dungeon.exit_pos:
+            self._total_victory = bool(self._monsters) and all(
+                not monster.is_alive for monster in self._monsters
+            )
             self._state = STATE_VICTORY
-            self._log("VITORIA TOTAL! Voce derrotou todos os inimigos e escapou da masmorra!")
-        elif self._player.pos == self._dungeon.exit_pos:
-            remaining = sum(monster.is_alive for monster in self._monsters)
-            self._log(f"A saida esta selada. Derrote os {remaining} inimigos restantes!")
+            if self._total_victory:
+                self._log("VITORIA TOTAL! Voce derrotou todos os inimigos e escapou da masmorra!")
+            else:
+                self._log("VITORIA! Voce escapou da masmorra!")
 
     # ── Combate ───────────────────────────────────────────────────────────────
 
@@ -404,7 +408,8 @@ class Game:
             debug_mode=self._debug_mode,
             message_log=self._msg_log,
             is_game_over=(self._state == STATE_GAME_OVER),
-            is_victory=(self._state == STATE_VICTORY)
+            is_victory=(self._state == STATE_VICTORY),
+            is_total_victory=self._total_victory,
         )
 
     # ── Utilitários ───────────────────────────────────────────────────────────
