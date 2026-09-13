@@ -6,6 +6,7 @@ Cada célula (col, row) contém um valor do enum TileType:
     WALL     : parede sólida, intransponível.
     FLOOR    : piso de sala.
     CORRIDOR : piso de corredor gerado pela MST.
+    TRAP     : armadilha oculta — caminhável, causa dano ao jogador.
 
 O TileMap também expõe callables compatíveis com o construtor de GridGraph.
 """
@@ -14,13 +15,15 @@ from __future__ import annotations
 
 from enum import IntEnum
 
-from src.game.constants import GRID_W, GRID_H, WEIGHT_FLOOR
+from src.game.constants import GRID_W, GRID_H, WEIGHT_FLOOR, WEIGHT_TRAP
 
 
 class TileType(IntEnum):
     WALL     = 0
     FLOOR    = 1
     CORRIDOR = 2
+    TRAP     = 3
+    EXIT     = 4
 
 
 class TileMap:
@@ -110,14 +113,39 @@ class TileMap:
     # ── Callables para GridGraph ──────────────────────────────────────────────
 
     def is_walkable(self, col: int, row: int) -> bool:
-        """Retorna True para tiles não-parede (FLOOR ou CORRIDOR)."""
+        """
+        Retorna True para tiles não-parede (FLOOR, CORRIDOR ou TRAP).
+        Armadilhas são caminháveis — o dano é resolvido pelo Game.
+        """
         if not self.in_bounds(col, row):
             return False
         return self._grid[row][col] != TileType.WALL
 
     def get_weight(self, col: int, row: int) -> float:
-        """Custo de entrar em (col, row). Futuro: armadilhas teriam peso > 1."""
+        """
+        Custo de entrar em (col, row).
+        Armadilhas têm peso alto para que monstros (e o A*) as evitem.
+        """
+        if not self.in_bounds(col, row):
+            return float("inf")
+        tile = self._grid[row][col]
+        if tile == TileType.TRAP:
+            return float(WEIGHT_TRAP)
         return float(WEIGHT_FLOOR)
+
+    def is_trap(self, col: int, row: int) -> bool:
+        """Retorna True se o tile em (col, row) é uma armadilha ativa."""
+        if not self.in_bounds(col, row):
+            return False
+        return self._grid[row][col] == TileType.TRAP
+
+    def disarm_trap(self, col: int, row: int) -> None:
+        """
+        Remove a armadilha de (col, row), convertendo para FLOOR.
+        Chamado após o jogador pisá-la.
+        """
+        if self.is_trap(col, row):
+            self.set(col, row, TileType.FLOOR)
 
     # ── Iteradores ────────────────────────────────────────────────────────────
 
@@ -131,4 +159,4 @@ class TileMap:
         ]
 
     def __repr__(self) -> str:
-        return f"TileMap({self.width}×{self.height})"
+        return f"TileMap({self.width}x{self.height})"

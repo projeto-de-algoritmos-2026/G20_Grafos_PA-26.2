@@ -12,6 +12,7 @@ Monster herda Entity e delega a tomada de decisão de movimento à MonsterAI.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -74,10 +75,12 @@ class Monster(Entity):
 
     Attributes:
         attack_power : dano base por ataque ao jogador.
+        color        : cor do monstro.
         ai           : instância de MonsterAI para pathfinding.
         vision_range : alcance de visão em tiles (só persegue se dentro do range).
     """
     attack_power: int      = 3
+    color:        tuple[int, int, int] = (220, 70, 70)
     vision_range: int      = 15   # tiles — define quando o monstro "acorda"
     ai:           MonsterAI = field(default_factory=MonsterAI, init=False)
 
@@ -165,3 +168,21 @@ class MonsterAction:
     """
     kind:   str
     target: Coord | None = None
+
+def create_random_monster(col: int, row: int, rng: random.Random) -> Monster:
+    """Cria um monstro aleatório de 4 tipos possíveis."""
+    types = [
+        {"name": "Goblin", "hp": 10, "dmg": 3, "color": (100, 200, 100), "weight": 40},
+        {"name": "Orc", "hp": 20, "dmg": 5, "color": (50, 150, 50), "weight": 30},
+        {"name": "Troll", "hp": 35, "dmg": 8, "color": (150, 100, 100), "weight": 20},
+        {"name": "Cavaleiro Sombrio", "hp": 50, "dmg": 12, "color": (100, 50, 150), "weight": 10},
+    ]
+    choice = rng.choices(types, weights=[t["weight"] for t in types], k=1)[0]
+    return Monster(
+        col=col, row=row,
+        hp=choice["hp"], max_hp=choice["hp"],
+        name=choice["name"],
+        attack_power=choice["dmg"],
+        color=choice["color"],
+        vision_range=18
+    )

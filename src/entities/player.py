@@ -7,6 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from src.entities.entity import Entity
+from src.entities.item import Item
+from src.entities.weapon import Weapon, FISTS
 
 Coord = tuple[int, int]
 
@@ -20,12 +22,14 @@ class Player(Entity):
     Adiciona atributos de combate básico (ataque) e contagem de turnos.
 
     Attributes:
-        attack_power : dano base por ataque.
+        weapon       : arma equipada.
+        armor        : armadura equipada, se houver.
         level        : nível atual do personagem.
         turns        : número de turnos jogados.
         score        : pontuação acumulada.
     """
-    attack_power: int = 5
+    weapon:       Weapon = FISTS
+    armor:        Item | None = None
     level:        int = 1
     turns:        int = field(default=0, init=False)
     score:        int = field(default=0, init=False)
@@ -62,3 +66,11 @@ class Player(Entity):
 
     def add_score(self, points: int) -> None:
         self.score += points
+
+    def increase_max_hp(self, amount: int) -> None:
+        """
+        Aumenta o HP máximo do jogador e soma ao HP atual proporcionalmente,
+        sem resetar a vida.
+        """
+        self.max_hp += amount
+        self.hp += amount
