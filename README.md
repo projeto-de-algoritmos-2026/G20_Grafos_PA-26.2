@@ -11,7 +11,9 @@ G20_Grafos_PA-26.2/
 ├── main.py                        ← Ponto de entrada
 ├── requirements.txt
 ├── tests/
-│   └── test_dijkstra.py           ← Testes automatizados de grafos (Dijkstra vs A*)
+│   ├── test_kruskal.py            ← Testes de MST (Kruskal) e Union-Find
+│   ├── test_astar.py              ← Testes de Pathfinding A* e GridGraph
+│   └── test_dijkstra.py           ← Testes de Dijkstra e Comparador de Grafos
 └── src/
     ├── graph/
     │   ├── grid_graph.py          ← GridGraph (vértices/arestas do dungeon)
@@ -49,8 +51,8 @@ python main.py
 # 3. Rodar com semente reproduzível (mesmo dungeon toda vez)
 python main.py --seed 42
 
-# 4. Executar os testes automatizados de grafos
-python -m unittest tests/test_dijkstra.py
+# 4. Executar toda a suíte de testes automatizados de grafos
+python -m unittest discover tests/
 ```
 
 ---
