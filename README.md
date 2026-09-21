@@ -1,3 +1,12 @@
+## 👥 Grupo 20 — PA 26.2
+
+| Matrícula | Aluno |
+|---|---|
+| 242015586 | Daniel Almeida Torquato |
+| 180116746  | Arthur Heleno do Couto da Silva |
+---
+> Disciplina: Projeto de Algoritmos · UnB · 2026/2
+
 # 🎮 Rogue-like PA-26.2 — G20 · Projeto de Algoritmos
 
 Jogo rogue-like 2D em Python + Pygame com geração procedural de dungeon via **MST (Kruskal)**, posicionamento topológico da saída via **Dijkstra**, IA de perseguição dos monstros via **A\*** e modo comparativo/benchmark em tempo real entre **Dijkstra e A\***.
@@ -178,6 +187,3 @@ Game.run()
 
 ---
 
-## 👥 Grupo 20 — PA 26.2
-
-> Disciplina: Projeto de Algoritmos · UnB · 2026/2
