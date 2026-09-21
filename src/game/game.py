@@ -8,6 +8,7 @@ Responsabilidades:
     - Processar input:
         · WASD    → movimento do jogador / ataque adjacente.
         · Setas   → panning manual da câmera.
+        · ESC     → encerrar o jogo após segurar por 1 segundo.
         · C       → centraliza câmera no jogador.
         · TAB     → toggle do overlay de debug A*.
         · R       → regenerar dungeon.
@@ -38,8 +39,8 @@ from src.game.constants import (
     CAM_PAN_SPEED, CAM_MAX_OFFSET,
     KEY_MOVE_UP, KEY_MOVE_DOWN, KEY_MOVE_LEFT, KEY_MOVE_RIGHT, KEY_WAIT,
     KEY_CAM_UP, KEY_CAM_DOWN, KEY_CAM_LEFT, KEY_CAM_RIGHT, KEY_CAM_RESET,
-    KEY_DEBUG, KEY_REGEN,
-    REGEN_HOLD_MS,
+    KEY_DEBUG, KEY_REGEN, KEY_EXIT,
+    REGEN_HOLD_MS, EXIT_HOLD_MS,
 )
 
 Coord = tuple[int, int]
@@ -100,6 +101,7 @@ class Game:
         self._monsters: list[Monster]      = []
         self._msg_log:  list[str]          = []
         self._regen_started_at: int | None = None
+        self._exit_started_at: int | None = None
 
         self._new_dungeon()
 
@@ -185,6 +187,11 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 # ── Ações sem turno ───────────────────────────────────────────
 
+                if event.key == KEY_EXIT and self._exit_started_at is None:
+                    self._exit_started_at = pygame.time.get_ticks()
+                    self._log("Segure Esc por 1 segundo para encerrar o jogo.")
+                    return False
+
                 if event.key == KEY_DEBUG:
                     self._debug_mode = not self._debug_mode
                     self._log(f"Debug A* {'ATIVADO' if self._debug_mode else 'desativado'}")
@@ -241,6 +248,16 @@ class Game:
                         self._new_dungeon()
                     else:
                         self._log("R soltado cedo demais. Segure por 1 segundo.")
+                return False
+
+            if event.type == pygame.KEYUP and event.key == KEY_EXIT:
+                if self._exit_started_at is not None:
+                    held_ms = pygame.time.get_ticks() - self._exit_started_at
+                    self._exit_started_at = None
+                    if held_ms >= EXIT_HOLD_MS:
+                        self._running = False
+                    else:
+                        self._log("Esc soltado cedo demais. Segure por 1 segundo.")
                 return False
 
         return False

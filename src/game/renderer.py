@@ -381,6 +381,7 @@ class Renderer:
     ) -> None:
         """HUD superior com barra de HP destacada e controles."""
         self._draw_player_hp_bar(player)
+        self._draw_exit_hint()
         self._draw_info_line(player, monsters, debug_mode)
         self._draw_controls_hint()
         self._draw_message_log(message_log)
@@ -454,6 +455,11 @@ class Renderer:
             f"HP  {player.hp} / {player.max_hp}", True, C_TEXT
         )
         self.screen.blit(hp_txt, (bar_x + 6, bar_y + 1))
+
+    def _draw_exit_hint(self) -> None:
+        """Dica para encerrar o jogo no canto superior direito."""
+        hint = self._font_sm.render("Segure ESC por 1s: fechar jogo", True, (180, 180, 200))
+        self.screen.blit(hint, (self.screen_w - hint.get_width() - 8, 10))
 
     def _draw_info_line(self, player: "Player", monsters: list["Monster"], debug_mode: bool) -> None:
         """Linha com turno, pontuação, progresso e equipamentos."""

@@ -89,6 +89,7 @@ try:
 
     KEY_DEBUG      = pygame.K_TAB     # TAB para toggle do overlay de debug
     KEY_REGEN      = pygame.K_r       # 'R' pressionado para regenerar dungeon
+    KEY_EXIT       = pygame.K_ESCAPE  # 'Esc' pressionado para encerrar o jogo
 except ImportError:
     KEY_MOVE_UP    = 119
     KEY_MOVE_DOWN  = 115
@@ -104,5 +105,7 @@ except ImportError:
 
     KEY_DEBUG      = 9
     KEY_REGEN      = 114
+    KEY_EXIT       = 27
 
 REGEN_HOLD_MS  = 1000             # tempo mínimo segurando R
+EXIT_HOLD_MS   = 1000             # tempo mínimo segurando Esc
