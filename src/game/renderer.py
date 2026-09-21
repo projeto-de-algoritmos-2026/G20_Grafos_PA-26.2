@@ -34,12 +34,14 @@ from src.game.constants import (
     C_WALL, C_FLOOR, C_CORRIDOR, C_TRAP, C_TRAP_GLYPH,
     C_PLAYER, C_MONSTER,
     C_PATH_FILL, C_START_NODE, C_GOAL_NODE,
+    C_DIJKSTRA_EXPLORED, C_ASTAR_EXPLORED,
     C_TEXT, C_TEXT_ACCENT, C_TEXT_WARN,
     C_HP_BG, C_HP_FILL, C_HP_FILL_HIGH, C_HP_FILL_MID,
 )
 
 if TYPE_CHECKING:
     from src.dungeon.tilemap import TileMap
+    from src.graph.grid_graph import GridGraph
     from src.entities.player import Player
     from src.entities.monster import Monster
     from src.entities.weapon import Weapon
@@ -122,6 +124,7 @@ class Renderer:
         is_game_over: bool,
         is_victory: bool,
         is_total_victory: bool,
+        graph: "GridGraph" | None = None,
     ) -> None:
         """
         Renderiza um frame completo usando o sistema de câmera.
@@ -135,7 +138,7 @@ class Renderer:
         self._draw_items(items, cam_col, cam_row)
 
         if debug_mode:
-            self._draw_debug_paths(monsters, player, cam_col, cam_row)
+            self._draw_debug_paths(monsters, player, cam_col, cam_row, graph)
 
         self._draw_entities(player, monsters, cam_col, cam_row)
         self._draw_hud(player, monsters, debug_mode, message_log)
@@ -225,49 +228,111 @@ class Renderer:
         player: "Player",
         cam_col: int,
         cam_row: int,
+        graph: "GridGraph" | None = None,
     ) -> None:
         """
-        Overlay de debug: pinta o caminho A* do monstro mais próximo ao jogador.
-        Células do caminho recebem sobreposição semi-transparente amarela.
+        Overlay de debug comparativo: executa Dijkstra e A* para o monstro mais próximo.
+        Pinta os nós explorados pelo Dijkstra (expansão omnidirecional em azul translúcido),
+        os nós explorados pelo A* (expansão focada pela heurística em âmbar translúcido)
+        e o caminho ótimo final. Exibe painel com métricas comparativas em tempo real.
         """
-        if not monsters:
+        alive_monsters = [m for m in monsters if m.is_alive]
+        if not alive_monsters:
             return
 
         pc, pr = player.pos
         closest = min(
-            monsters,
+            alive_monsters,
             key=lambda m: abs(m.col - pc) + abs(m.row - pr),
         )
 
-        path = closest.debug_path
+        all_monster_pos = {m.pos for m in alive_monsters}
+        blocked = all_monster_pos - {closest.pos}
+
+        dijkstra_res = None
+        astar_res = None
+        if graph is not None:
+            from src.algorithms.dijkstra import dijkstra_path
+            from src.algorithms.astar import find_path_detailed
+
+            dijkstra_res = dijkstra_path(closest.pos, player.pos, graph, blocked=blocked)
+            astar_res = find_path_detailed(closest.pos, player.pos, graph, blocked=blocked)
+            path = astar_res.path
+        else:
+            path = closest.debug_path
+
         if not path:
             return
 
         self._overlay.fill((0, 0, 0, 0))
 
+        # 1. Nós explorados pelo Dijkstra (área omnidirecional maior)
+        if dijkstra_res and dijkstra_res.explored_nodes:
+            for coord in dijkstra_res.explored_nodes:
+                r = self._screen_rect(*coord, cam_col, cam_row)
+                if -TILE_SIZE <= r.x <= self.screen_w and -TILE_SIZE <= r.y <= self.screen_h:
+                    pygame.draw.rect(self._overlay, C_DIJKSTRA_EXPLORED, r)
+
+        # 2. Nós explorados pelo A* (feixe direcionado)
+        if astar_res and astar_res.explored_nodes:
+            for coord in astar_res.explored_nodes:
+                r = self._screen_rect(*coord, cam_col, cam_row)
+                if -TILE_SIZE <= r.x <= self.screen_w and -TILE_SIZE <= r.y <= self.screen_h:
+                    pygame.draw.rect(self._overlay, C_ASTAR_EXPLORED, r)
+
+        # 3. Caminho ótimo final
         for coord in path[1:-1]:
             r = self._screen_rect(*coord, cam_col, cam_row)
-            pygame.draw.rect(self._overlay, C_PATH_FILL, r)
+            if -TILE_SIZE <= r.x <= self.screen_w and -TILE_SIZE <= r.y <= self.screen_h:
+                pygame.draw.rect(self._overlay, C_PATH_FILL, r)
 
         self.screen.blit(self._overlay, (0, 0))
 
         # Bordas de origem e destino
-        if path:
-            pygame.draw.rect(
-                self.screen, C_START_NODE,
-                self._screen_rect(*path[0], cam_col, cam_row), 3
-            )
-        if len(path) > 1:
-            pygame.draw.rect(
-                self.screen, C_GOAL_NODE,
-                self._screen_rect(*path[-1], cam_col, cam_row), 3
-            )
-
-        lbl = self._font_sm.render(
-            f"DEBUG A*: caminho={len(path)} tiles | monstro=({closest.col},{closest.row})",
-            True, C_TEXT_ACCENT,
+        pygame.draw.rect(
+            self.screen, C_START_NODE,
+            self._screen_rect(*closest.pos, cam_col, cam_row), 3
         )
-        self.screen.blit(lbl, (8, SCREEN_H - 22))
+        pygame.draw.rect(
+            self.screen, C_GOAL_NODE,
+            self._screen_rect(*player.pos, cam_col, cam_row), 3
+        )
+
+        # Painel comparativo de métricas na tela
+        if dijkstra_res and astar_res and dijkstra_res.iterations > 0:
+            reduction = max(0.0, (1.0 - (astar_res.iterations / dijkstra_res.iterations)) * 100.0)
+            panel_w, panel_h = 630, 72
+            panel_x = self.screen_w - panel_w - 12
+            panel_y = 12
+
+            panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+            panel_surf.fill((15, 18, 30, 230))
+            pygame.draw.rect(panel_surf, (80, 140, 220), (0, 0, panel_w, panel_h), 1, border_radius=6)
+            self.screen.blit(panel_surf, (panel_x, panel_y))
+
+            title = self._font_sm.render(
+                "★ COMPARATIVO: DIJKSTRA vs A* (Monstro mais próximo -> Jogador)",
+                True, C_TEXT_ACCENT
+            )
+            self.screen.blit(title, (panel_x + 10, panel_y + 6))
+
+            line_dijkstra = self._font_sm.render(
+                f"[Dijkstra] Nós: {dijkstra_res.iterations:<3} | Tempo: {dijkstra_res.time_us:>5.1f} µs | Custo: {dijkstra_res.cost:.1f}",
+                True, (140, 180, 255)
+            )
+            self.screen.blit(line_dijkstra, (panel_x + 10, panel_y + 26))
+
+            line_astar = self._font_sm.render(
+                f"[A* Heur.] Nós: {astar_res.iterations:<3} | Tempo: {astar_res.time_us:>5.1f} µs | Custo: {astar_res.cost:.1f} (Redução: {reduction:.1f}%)",
+                True, (255, 220, 100)
+            )
+            self.screen.blit(line_astar, (panel_x + 10, panel_y + 46))
+        else:
+            lbl = self._font_sm.render(
+                f"DEBUG: caminho={len(path)} tiles | monstro=({closest.col},{closest.row})",
+                True, C_TEXT_ACCENT,
+            )
+            self.screen.blit(lbl, (8, self.screen_h - 22))
 
     def _draw_entities(
         self,
@@ -413,7 +478,7 @@ class Renderer:
         """Dica de controles no canto inferior direito."""
         hints = [
             "WASD: Mover   .: Esperar   Segure R: Nova run",
-            "Setas: Camara  C: Centralizar  TAB: Debug A*",
+            "Setas: Camara  C: Centralizar  TAB: Debug (Dijkstra vs A*)",
         ]
         y = self.screen_h - 12 - len(hints) * 15
         for hint in hints:

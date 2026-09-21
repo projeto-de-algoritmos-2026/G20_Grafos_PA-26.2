@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from src.dungeon.tilemap import TileMap, TileType
 from src.graph.grid_graph import GridGraph
 from src.algorithms.kruskal import kruskal_mst, Edge
+from src.algorithms.dijkstra import dijkstra_all_distances
 from src.entities.weapon import Weapon, random_weapon
 from src.entities.item import Item, random_item
 from src.game.constants import (
@@ -194,16 +195,16 @@ class DungeonGenerator:
         # 5.5 Itens
         items = self._place_items(tilemap, rooms, trap_cells, weapons)
 
-        # 6. Saída (EXIT) na sala mais distante
-        exit_pos = self._place_exit(tilemap, rooms, player_start)
-
-        # 7. GridGraph (reconstrói após armadilhas/saída para refletir pesos)
+        # 6. GridGraph (com armadilhas já posicionadas e pesos configurados)
         graph = GridGraph(
             is_walkable=tilemap.is_walkable,
             get_weight=tilemap.get_weight,
             width=self.width,
             height=self.height,
         )
+
+        # 7. Saída (EXIT) na sala topologicamente mais distante via Algoritmo de Dijkstra
+        exit_pos = self._place_exit(tilemap, rooms, player_start, graph)
 
         return DungeonData(
             tilemap=tilemap,
@@ -375,17 +376,28 @@ class DungeonGenerator:
         tilemap: TileMap,
         rooms: list[Room],
         player_start: Coord,
+        graph: GridGraph,
     ) -> Coord:
-        """Encontra a sala mais distante do player_start e coloca a saída (EXIT) lá."""
+        """
+        Encontra a sala mais distante do player_start utilizando o Algoritmo de Dijkstra
+        sobre o labirinto real (considerando corredores, curvas e pesos) e coloca a saída (EXIT) lá.
+        """
+        if not rooms or len(rooms) < 2:
+            exit_pos = (player_start[0] + 1, player_start[1])
+            tilemap.set(exit_pos[0], exit_pos[1], TileType.EXIT)
+            return exit_pos
+
+        # Executa Dijkstra de fonte única a partir de player_start
+        distances, _ = dijkstra_all_distances(player_start, graph)
+
         furthest_room = rooms[-1]
-        max_dist = -1
-        px, py = player_start
+        max_dist = -1.0
         for room in rooms[1:]:
-            dist = abs(room.cx - px) + abs(room.cy - py)
+            dist = distances.get(room.center, -1.0)
             if dist > max_dist:
                 max_dist = dist
                 furthest_room = room
-        
+
         exit_pos = furthest_room.center
         tilemap.set(exit_pos[0], exit_pos[1], TileType.EXIT)
         return exit_pos

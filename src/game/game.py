@@ -410,6 +410,7 @@ class Game:
             is_game_over=(self._state == STATE_GAME_OVER),
             is_victory=(self._state == STATE_VICTORY),
             is_total_victory=self._total_victory,
+            graph=self._dungeon.graph,
         )
 
     # ── Utilitários ───────────────────────────────────────────────────────────

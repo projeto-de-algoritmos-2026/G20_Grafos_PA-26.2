@@ -4,8 +4,6 @@ Constantes globais do jogo.
 Ajuste TILE_SIZE, GRID_W, GRID_H e NUM_ROOMS para calibrar o dungeon.
 """
 
-import pygame
-
 # ─── Janela ───────────────────────────────────────────────────────────────────
 WINDOW_TITLE   = "Rogue-like PA-26.2 — G20"
 TILE_SIZE      = 32          # pixels por célula do grid
@@ -65,6 +63,8 @@ C_PATH_FILL    = (255, 220,   0, 110)   # amarelo semi-transparente — caminho 
 C_MST_LINE     = (  0, 255, 150,  90)   # verde-água — corredores MST (debug)
 C_START_NODE   = (  0, 220,  80)        # origem do caminho (monstro)
 C_GOAL_NODE    = ( 80, 180, 255)        # destino do caminho (jogador)
+C_DIJKSTRA_EXPLORED = ( 70, 130, 240,  50)  # azul translúcido — expansão do Dijkstra
+C_ASTAR_EXPLORED    = (255, 180,  40,  70)  # âmbar translúcido — expansão do A*
 
 # HUD
 C_TEXT         = (210, 210, 230)
@@ -72,21 +72,37 @@ C_TEXT_ACCENT  = ( 80, 200, 255)
 C_TEXT_WARN    = (230, 100,  60)
 C_HUD_PANEL    = ( 12,  12,  22, 200)
 
-# ─── Teclas — Movimento do Jogador (WASD) ─────────────────────────────────────
-KEY_MOVE_UP    = pygame.K_w
-KEY_MOVE_DOWN  = pygame.K_s
-KEY_MOVE_LEFT  = pygame.K_a
-KEY_MOVE_RIGHT = pygame.K_d
-KEY_WAIT       = pygame.K_PERIOD   # '.' para esperar um turno
+# ─── Teclas (WASD, Setas, Ações) ─────────────────────────────────────────────
+try:
+    import pygame
+    KEY_MOVE_UP    = pygame.K_w
+    KEY_MOVE_DOWN  = pygame.K_s
+    KEY_MOVE_LEFT  = pygame.K_a
+    KEY_MOVE_RIGHT = pygame.K_d
+    KEY_WAIT       = pygame.K_PERIOD   # '.' para esperar um turno
 
-# ─── Teclas — Câmera (Setas) ──────────────────────────────────────────────────
-KEY_CAM_UP     = pygame.K_UP
-KEY_CAM_DOWN   = pygame.K_DOWN
-KEY_CAM_LEFT   = pygame.K_LEFT
-KEY_CAM_RIGHT  = pygame.K_RIGHT
-KEY_CAM_RESET  = pygame.K_c       # 'C' centraliza a câmera no jogador
+    KEY_CAM_UP     = pygame.K_UP
+    KEY_CAM_DOWN   = pygame.K_DOWN
+    KEY_CAM_LEFT   = pygame.K_LEFT
+    KEY_CAM_RIGHT  = pygame.K_RIGHT
+    KEY_CAM_RESET  = pygame.K_c       # 'C' centraliza a câmera no jogador
 
-# ─── Teclas — Ações ───────────────────────────────────────────────────────────
-KEY_DEBUG      = pygame.K_TAB     # TAB para toggle do overlay de debug
-KEY_REGEN      = pygame.K_r       # 'R' pressionado para regenerar dungeon
+    KEY_DEBUG      = pygame.K_TAB     # TAB para toggle do overlay de debug
+    KEY_REGEN      = pygame.K_r       # 'R' pressionado para regenerar dungeon
+except ImportError:
+    KEY_MOVE_UP    = 119
+    KEY_MOVE_DOWN  = 115
+    KEY_MOVE_LEFT  = 97
+    KEY_MOVE_RIGHT = 100
+    KEY_WAIT       = 46
+
+    KEY_CAM_UP     = 1073741906
+    KEY_CAM_DOWN   = 1073741905
+    KEY_CAM_LEFT   = 1073741904
+    KEY_CAM_RIGHT  = 1073741903
+    KEY_CAM_RESET  = 99
+
+    KEY_DEBUG      = 9
+    KEY_REGEN      = 114
+
 REGEN_HOLD_MS  = 1000             # tempo mínimo segurando R
