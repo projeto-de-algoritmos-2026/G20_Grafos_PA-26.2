@@ -18,7 +18,7 @@ Jogo rogue-like 2D em Python + Pygame com geração procedural de dungeon via **
 ```
 G20_Grafos_PA-26.2/
 ├── main.py                        ← Ponto de entrada
-├── requirements.txt
+├── requirements.txt               ← Dependência do projeto (Pygame)
 ├── tests/
 │   ├── test_kruskal.py            ← Testes de MST (Kruskal) e Union-Find
 │   ├── test_astar.py              ← Testes de Pathfinding A* e GridGraph
@@ -77,6 +77,31 @@ python -m unittest discover tests/
 | **C** | Centralizar a câmera no jogador |
 | **TAB** | Toggle do overlay de debug comparativo (**Dijkstra vs A\***) |
 | **R** (segurar 1s) | Regenerar dungeon com nova semente |
+| **ESC** (segurar 1s) | Encerrar o jogo |
+
+---
+
+## 🕹️ Como funciona o jogo
+
+O jogador começa em uma sala segura de um dungeon gerado aleatoriamente. A missão é explorar o mapa, enfrentar os monstros e alcançar a saída `EXIT`.
+
+- **Movimento por turnos:** cada movimento, ataque ou espera encerra o turno do jogador e permite que os monstros ajam.
+- **Combate:** pressionar `W`, `A`, `S` ou `D` na direção de um monstro adjacente realiza um ataque usando a arma equipada.
+- **Monstros:** perseguem o jogador usando A\* e podem se mover ou atacar quando estão adjacentes.
+- **Armas:** são encontradas no mapa e substituem automaticamente a arma atual quando possuem dano melhor.
+- **Armaduras:** aumentam o HP máximo quando coletadas, desde que sejam melhores que a armadura equipada.
+- **Poções:** restauram HP ao serem coletadas.
+- **Pontuação:** derrotar monstros e coletar equipamentos/itens concede pontos.
+- **Armadilhas:** causam de 3 a 8 pontos de dano, são desarmadas após serem ativadas e aparecem com um `X` vermelho.
+- **Saída:** alcançar `EXIT` gera vitória; derrotar todos os monstros antes de sair registra uma vitória total.
+- **Game over:** acontece quando o HP do jogador chega a zero. Segure `R` por 1 segundo para gerar uma nova partida.
+- **Encerramento:** segure `ESC` por 1 segundo. Soltar a tecla antes disso não fecha o jogo.
+
+### HUD e câmera
+
+O HUD mostra HP, jogadas, pontuação, inimigos derrotados, arma, armadura, mensagens de eventos e os controles principais. A instrução para segurar `ESC` aparece no canto superior direito.
+
+O mapa possui 60×45 tiles e a câmera acompanha o jogador. As setas fazem panning manual, limitado a 8 tiles, e `C` restaura o enquadramento centralizado.
 
 ---
 
@@ -171,6 +196,8 @@ main.py
               │     └── UnionFind
               ├── TileMap.carve_*()           → grade de tiles
               ├── _place_traps()              → TRAP tiles (peso 8)
+              ├── _place_weapons()            → armas espalhadas pelo mapa
+              ├── _place_items()              → poções e armaduras
               ├── GridGraph(tilemap)          → grafo com pesos reais
               └── dijkstra_all_distances()    ← ALGORITMO 2 (Dijkstra - Saída)
                     └── posiciona EXIT na sala de maior distância real
@@ -183,6 +210,37 @@ Game.run()
                     └── MonsterAI.calculate_next_step()
                           └── astar.find_path()   ← ALGORITMO 3 (A*)
                                 └── GridGraph.neighbors()
+```
+
+---
+
+## 🧱 Componentes principais
+
+| Diretório | Responsabilidade |
+|-----------|------------------|
+| `src/algorithms/` | Implementações de Kruskal, Dijkstra e A\*. |
+| `src/graph/` | Estruturas `GridGraph` e `UnionFind`. |
+| `src/dungeon/` | Salas, corredores, tiles, armadilhas, itens, armas e saída. |
+| `src/entities/` | Entidades do jogo: jogador, monstros, armas e itens. |
+| `src/game/` | Loop da partida, constantes, eventos de teclado, câmera e renderização. |
+| `tests/` | Testes unitários dos algoritmos e da geração da saída. |
+
+### Reprodutibilidade
+
+O argumento `--seed` controla a semente usada na geração. Isso permite reproduzir a mesma sequência de dungeons para depuração, demonstrações e comparação dos algoritmos. Sem uma semente, cada execução gera uma partida diferente.
+
+### Testes
+
+Os testes usam apenas a biblioteca padrão `unittest` e cobrem:
+
+- conectividade, aciclicidade e operações do Union-Find/MST;
+- caminhos, obstáculos, pesos e heurística do A\*;
+- distâncias, custos ótimos e posicionamento alcançável da saída com Dijkstra.
+
+Execute com:
+
+```bash
+python -m unittest discover tests/ -v
 ```
 
 ---
