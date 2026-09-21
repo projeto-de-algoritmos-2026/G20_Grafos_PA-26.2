@@ -6,6 +6,7 @@
 | 180116746  | Arthur Heleno do Couto da Silva |
 ---
 > Disciplina: Projeto de Algoritmos · UnB · 2026/2
+
 > Link da apresentação: https://youtu.be/3PammJDP5mQ
 
 # 🎮 Rogue-like PA-26.2 — G20 · Projeto de Algoritmos
